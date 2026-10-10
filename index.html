@@ -539,6 +539,20 @@ function fbTok(){if(FT.tok&&Date.now()<FT.exp)return Promise.resolve(FT.tok);var
 function fbReq(path,method,body){return fbTok().then(function(t){return fetch(db.set.fb.url.replace(/\/+$/,'')+path+'.json?auth='+t,{method:method||'GET',body:body?JSON.stringify(body):undefined})}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
 var NTFY_TOPIC='gulava-xx6m806my1yifr';
 function notifOK(){return 'Notification' in window&&Notification.permission==='granted'}
+function clearNotif(){try{if(navigator.clearAppBadge)navigator.clearAppBadge().catch(function(){});if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration)navigator.serviceWorker.getRegistration().then(function(r){if(r&&r.getNotifications)return r.getNotifications().then(function(a){a.forEach(function(n){n.close()})})}).catch(function(){})}catch(e){}}
+var AUD=null,SND=[['beep','Bip standar'],['bell','Lonceng'],['alarm','Alarm 3x bip'],['voice','Suara \"Pesanan masuk\"'],['custom','Suara dari HP (pilih file)'],['off','Tanpa suara']];
+function tone(ac,f,t0,d,vol){var o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol||.5,t0+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.start(t0);o.stop(t0+d+.05)}
+function playAlert(){var ty=db.set.sndType||'beep';if(ty==='off')return;
+ try{
+  if(ty==='custom'&&db.set.sndFile){if(AUD){try{AUD.pause()}catch(e){}}AUD=new Audio(db.set.sndFile);AUD.volume=1;AUD.play().catch(function(){});return}
+  if(ty==='voice'&&'speechSynthesis' in window&&typeof SpeechSynthesisUtterance!=='undefined'){var u=new SpeechSynthesisUtterance('Pesanan masuk, mohon diproses');u.lang='id-ID';u.rate=.95;u.volume=1;if(speechSynthesis.speaking)speechSynthesis.cancel();speechSynthesis.speak(u);return}
+  var ac=new(window.AudioContext||window.webkitAudioContext)(),t=ac.currentTime;
+  if(ty==='bell'){tone(ac,988,t,.5,.6);tone(ac,1319,t+.25,.8,.6)}
+  else if(ty==='alarm'){for(var i=0;i<3;i++)tone(ac,880,t+i*.3,.2,.7)}
+  else tone(ac,880,t,.4,.6)
+ }catch(e){}}
+function sndRow(){var cur=db.set.sndType||'beep',op=SND.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===cur?' selected':'')+'>'+x[1]+'</option>'}).join('');
+ return '<div class="row" style="margin-top:8px"><span>Suara pesanan masuk</span><button class="btn sm" data-act="sndtest">Tes</button></div><select id="sndsel" style="margin-top:8px">'+op+'</select>'+(cur==='custom'?'<div class="row" style="margin-top:8px"><small class="mut">'+(db.set.sndFile?esc(db.set.sndName||'Suara dari HP'):'Belum ada file')+' (maks 400 KB)</small><button class="btn sm" data-act="sndpick">Pilih file</button></div>':'')+'<input id="sndfile" type="file" accept="audio/*" style="display:none"><small class="mut" style="display:block;margin-top:8px">Nada di bilah notifikasi saat kasir tertutup diatur di Pengaturan HP › Aplikasi › Kasir Gulava › Notifikasi › Suara.</small>'}
 function showNotif(title,body){
  if(!notifOK())return;
  var opt={body:body,tag:'pesanan-online',renotify:true,vibrate:[300,120,300,120,300]};
@@ -548,7 +562,7 @@ function showNotif(title,body){
 function ntfyPush(t,m){try{fetch('https://ntfy.sh/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:NTFY_TOPIC,title:t,message:m,priority:4,tags:['bell']})}).catch(function(){})}catch(e){}}
 var WL=null;
 function wlApply(){try{if(db.set.wl&&'wakeLock' in navigator&&document.visibilityState==='visible'&&!WL){navigator.wakeLock.request('screen').then(function(l){WL=l;l.addEventListener('release',function(){WL=null})}).catch(function(){})}else if(!db.set.wl&&WL){WL.release();WL=null}}catch(e){}}
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){wlApply();if(typeof onlPoll==='function')onlPoll()}});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){wlApply();if(tab==='online')clearNotif();if(typeof onlPoll==='function')onlPoll()}});
 function vNotif(){var sup='Notification' in window,pm=sup?Notification.permission:'x',st;
  if(pm==='granted')st='<b class="pos">Aktif ✓</b>';
  else if(pm==='denied')st='<b class="neg">Diblokir</b>';
@@ -556,17 +570,17 @@ function vNotif(){var sup='Notification' in window,pm=sup?Notification.permissio
  else st='<small class="mut">Belum didukung</small>';
  var hint=pm==='denied'?'<small class="mut" style="display:block;margin-top:6px">Izinkan Notifikasi lewat pengaturan situs/aplikasi di HP, lalu muat ulang kasir.</small>':(!sup?'<small class="mut" style="display:block;margin-top:6px">Di iPhone, tambahkan kasir ke Layar Utama dulu (Bagikan › Tambah ke Layar Utama), lalu buka dari ikonnya.</small>':'');
  var wl='wakeLock' in navigator?'<div class="row" style="margin-top:8px"><span>Jaga layar tetap menyala</span><button class="btn sm" data-act="wlset">'+(db.set.wl?'Aktif':'Mati')+'</button></div>':'';
- return '<div class="card"><div class="row"><b>🔔 Notifikasi HP</b>'+st+'</div>'+hint+wl+'<small class="mut" style="display:block;margin-top:8px">Cadangan saat kasir tertutup: pasang aplikasi <b>ntfy</b> (gratis), lalu langganan topik <b>'+NTFY_TOPIC+'</b>.</small><div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" data-act="ntfcopy" data-v="'+NTFY_TOPIC+'">Salin Topik</button><button class="btn sm" data-act="ntftest">Tes Notifikasi</button></div></div>'}
+ return '<div class="card"><div class="row"><b>🔔 Notifikasi HP</b>'+st+'</div>'+hint+wl+sndRow()+'<small class="mut" style="display:block;margin-top:8px">Cadangan saat kasir tertutup: pasang aplikasi <b>ntfy</b> (gratis), lalu langganan topik <b>'+NTFY_TOPIC+'</b>.</small><div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" data-act="ntfcopy" data-v="'+NTFY_TOPIC+'">Salin Topik</button><button class="btn sm" data-act="ntftest">Tes Notifikasi</button></div></div>'}
 function onlNew(){return db.onl.filter(function(x){return x.st==='baru'}).length}
 function onlPub(){if(!fbOn())return;var sh=db.set.olShip||{};fbReq('/status','PUT',{open:db.set.olOpen!==false,amb:sh.amb!==false,ant:sh.ant!==false,t:Date.now()}).catch(function(){})}
 function onlPoll(){if(!fbOn()||OP)return;OP=true;
  fbReq('/orders').then(function(o){o=o||{};var ids=Object.keys(o),n=0,nm=[],tt2=0;ids.forEach(function(id){if(!db.onl.some(function(x){return x.rid===id})){var v=o[id];v.rid=id;v.got=Date.now();v.st='baru';db.onl.push(v);n++;nm.push(v.nama||'Pelanggan');tt2+=(+v.total||0)}});
-  if(db.onl.length>200)db.onl=db.onl.slice(-200);if(n){save();toast('🔔 '+n+' pesanan online baru');showNotif('🔔 '+n+' pesanan online baru',nm.join(', ')+(n===1?' · '+rp(tt2):''));try{var ac=new(window.AudioContext||window.webkitAudioContext)(),os=ac.createOscillator();os.connect(ac.destination);os.frequency.value=880;os.start();os.stop(ac.currentTime+.4)}catch(e){}if(tab==='dash'||tab==='online')render()}
+  if(db.onl.length>200)db.onl=db.onl.slice(-200);if(n){save();toast('🔔 '+n+' pesanan online baru');if(!(tab==='online'&&document.visibilityState==='visible'))showNotif('🔔 '+n+' pesanan online baru',nm.join(', ')+(n===1?' · '+rp(tt2):''));playAlert();if(tab==='dash'||tab==='online')render()}
   return Promise.all(ids.map(function(id){return fbReq('/orders/'+id,'DELETE')}))}).catch(function(){}).then(function(){OP=false})}
 function onlCart(o){var c2={},miss=[];(o.items||[]).forEach(function(it){var p=db.products.filter(function(x){return x.c.toLowerCase()===String(it.c).toLowerCase()&&x.n.toLowerCase()===String(it.n).toLowerCase()})[0];if(!p){miss.push(it.c+' '+it.n);return}var sv=(it.s||[]).slice().sort(),n2=(it.nt||'').trim();c2[p.id+'|'+sv.join(',')+(it.L?'|L':'')+(n2?'|n'+n2:'')]={id:p.id,s:sv,q:it.q,L:!!it.L,X:[],N:n2}});return{cart:c2,miss:miss}}
 function vOnline(){var L=db.onl.slice().sort(function(a,b){return b.t-a.t}).slice(0,40);
  return '<p class="mut">Pesanan dari situs menu masuk ke sini. Pelanggan membayar lewat QRIS, jadi pastikan bukti bayar sudah diterima sebelum memproses.</p>'+vNotif()+(fbOn()?'':'<div class="warn">Belum terhubung. Atur di Pengaturan › Warung Online.</div>')+(L.map(function(o){var c=onlCart(o),tk=hTot(c.cart),hl=o.hid&&db.held.some(function(h){return h.id===o.hid});
-  var act=o.st==='baru'?'<div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" style="flex:2" data-act="onlok" data-id="'+o.rid+'">Terima</button><button class="btn danger sm" style="flex:1" data-act="onlno" data-id="'+o.rid+'">Tolak</button></div>':'<div class="row" style="margin-top:8px"><b class="'+(o.st==='ditolak'?'neg':'pos')+'">'+(o.st==='ditolak'?'Ditolak':'Diterima')+'</b>'+(hl?'<button class="btn sm" data-act="hload" data-id="'+o.hid+'">Lanjut ke Kasir</button>':'')+'</div>';
+  var act=o.st==='baru'?'<div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" style="flex:2" data-act="onlok" data-id="'+o.rid+'">Terima</button><button class="btn danger sm" style="flex:1" data-act="onlno" data-id="'+o.rid+'">Tolak</button></div>':'<div class="row" style="margin-top:8px"><b class="'+(o.st==='ditolak'?'neg':'pos')+'">'+(o.st==='ditolak'?'Ditolak':'Diterima')+'</b>'+(hl?'<button class="btn sm" data-act="hload" data-id="'+o.hid+'">Lanjut ke Kasir</button>':'')+'<button class="btn danger sm" data-act="onldel" data-id="'+o.rid+'">🗑 Hapus</button></div>';
   return '<div class="card"><div class="row"><b>'+esc(o.nama)+'</b><small class="mut">'+fd(o.t)+'</small></div><small class="mut">'+esc(o.mt)+(o.alamat?' · '+esc(o.alamat):'')+'</small>'+(o.lat?' <a href="https://www.google.com/maps?q='+(+o.lat)+','+(+o.lng)+'" target="_blank" rel="noopener">Lokasi</a>':'')+'<div style="margin:6px 0">'+(o.items||[]).map(function(i){return esc(i.c+' '+i.n)+(i.L?' (Large)':'')+' ×'+i.q+(i.s&&i.s.length?' <small class="mut">('+esc(i.s.join(', '))+')</small>':'')+(i.nt?' <small class="mut">['+esc(i.nt)+']</small>':'')}).join('<br>')+'</div><div class="row tot"><span>Total</span><span>'+rp(o.total)+'</span></div>'+(c.miss.length?'<div class="warn">Tidak ada di produk kasir: '+esc(c.miss.join(', '))+'</div>':(tk!==o.total?'<div class="warn">Harga kasir '+rp(tk)+' berbeda dari situs '+rp(o.total)+'.</div>':''))+act+'</div>'}).join('')||'<p class="mut">Belum ada pesanan online.</p>')}
 function vFb(){var f=db.set.fb||{};return '<div class="card" style="margin-top:16px"><h3 style="font-size:20px;margin-bottom:4px">Hubungkan ke situs pesanan</h3><small class="mut">Data dari Firebase, lihat PANDUAN-FIREBASE.md. '+(fbOn()?'Status: tersimpan.':'Status: belum diisi.')+'</small>'+fld('fbu','Database URL',f.url,0,'https://...firebasedatabase.app')+fld('fbk','Web API Key',f.key)+fld('fbe','Email akun kasir',f.email)+'<label class="f">Kata sandi akun kasir</label><input id="fbp" type="password" value="'+esc(f.pw||'')+'" autocomplete="off"><button class="btn full" style="margin-top:12px" data-act="fbsave">Simpan & Tes Koneksi</button></div>'}
 /* ---------- RENDER & EVENTS ---------- */
@@ -576,6 +590,7 @@ function render(){
  $('#ttl').textContent=TT[tab];$('#biz').textContent=db.set.biz;
  document.querySelectorAll('#tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===(TP[tab]||tab))});
  $('#main').innerHTML=VW[tab]();
+ if(tab==='online'&&document.visibilityState==='visible')clearNotif();
  if(tab==='kasir'){grid();$('#q').oninput=grid}
  bar()}
 /* ---------- BLUETOOTH PRINTER (ESC/POS, 58mm) ---------- */
@@ -698,11 +713,14 @@ document.addEventListener('click',function(e){
  else if(a==='pinset')pinSheet(id)
  else if(a==='ntfon'){if(!('Notification' in window)){toast('Perangkat belum mendukung notifikasi');return}Notification.requestPermission().then(function(p){if(p==='granted')showNotif('Notifikasi aktif ✓','Pesanan online baru akan muncul di sini.');else toast('Izin notifikasi ditolak');render()})}
  else if(a==='wlset'){db.set.wl=!db.set.wl;save();wlApply();render();toast(db.set.wl?'Layar tetap menyala saat kasir dibuka':'Layar kembali normal')}
+ else if(a==='sndtest'){playAlert()}
+ else if(a==='sndpick'){var sf=$('#sndfile');if(sf)sf.click()}
  else if(a==='ntfcopy'){copy(v,'Topik disalin')}
  else if(a==='ntftest'){showNotif('🔔 Tes notifikasi','Kasir Gulava berfungsi.');ntfyPush('🔔 Tes notifikasi','Kasir Gulava berfungsi.');toast('Tes dikirim')}
  else if(a==='fbsave'){db.set.fb={url:$('#fbu').value.trim(),key:$('#fbk').value.trim(),email:$('#fbe').value.trim(),pw:$('#fbp').value};FT.tok=null;save();if(!fbOn()){toast('Lengkapi keempat isian.');return}toast('Menguji koneksi...');fbReq('/status','PUT',{open:db.set.olOpen!==false,amb:(db.set.olShip||{}).amb!==false,ant:(db.set.olShip||{}).ant!==false,t:Date.now()}).then(function(){toast('Terhubung ✓');render();onlPoll()}).catch(function(e){toast('Gagal: '+e.message)})}
  else if(a==='onlok'){var oo=db.onl.filter(function(x){return x.rid===id})[0];if(!oo)return;var cc=onlCart(oo);if(cc.miss.length||!Object.keys(cc.cart).length){toast('Ada produk yang tidak cocok dengan produk kasir.');return}var hid=uid();db.held.push({id:hid,t:Date.now(),nm:'Online · '+oo.nama+(oo.mt==='Diantar'?' (Diantar)':''),cart:cc.cart});oo.st='diterima';oo.hid=hid;save();render();toast('Diterima. Ada di Pesanan Tersimpan.')}
- else if(a==='onlno')ask('on'+id,'Tolak pesanan ini?',function(){var oo=db.onl.filter(function(x){return x.rid===id})[0];if(oo){oo.st='ditolak';save();render()}})
+ else if(a==='onldel')ask('od'+id,'Hapus pesanan ini?',function(){db.onl=db.onl.filter(function(x){return x.rid!==id});save();render();toast('Pesanan dihapus')})
+   else if(a==='onlno')ask('on'+id,'Tolak pesanan ini?',function(){var oo=db.onl.filter(function(x){return x.rid===id})[0];if(oo){oo.st='ditolak';save();render()}})
  else if(a==='pfdel'){readSet();delete db.set.avatar;save();render()}
  else if(a==='olsave'){var nl=olNorm($('#ols').value);if(!/^https:\/\/[\w-]+(\.[\w-]+)+(\/\S*)?$/i.test(nl)){toast('Isi link toko online dengan benar.');return}var sa=document.querySelector('.shp[data-v=amb]').classList.contains('on'),sm=document.querySelector('.shp[data-v=ant]').classList.contains('on');if(!sa&&!sm){toast('Pilih minimal satu jenis pengiriman.');return}db.set.olink=nl;db.set.olOpen=$('#olsw').classList.contains('on');db.set.olShip={amb:sa,ant:sm};save();render();onlPub();toast('Pengaturan warung online disimpan')}
  else if(a==='oltog'){var sw=$('#olsw'),on=!sw.classList.contains('on');sw.classList.toggle('on',on);sw.setAttribute('aria-checked',on);$('#olt').textContent=on?'Ya':'Tidak'}
@@ -805,5 +823,8 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter'&&(e.target.id
 document.addEventListener('input',function(e){if(e.target.id==='pq'){PQ=e.target.value;var pl=$('#plist');if(pl)pl.innerHTML=plistHTML()}});
 document.addEventListener('change',function(e){if(e.target.id!=='pfp')return;var f=e.target.files[0];if(!f)return;readSet();var fr=new FileReader();fr.onload=function(){var im2=new Image();im2.onload=function(){var z=Math.min(160,im2.width,im2.height),c=document.createElement('canvas');c.width=c.height=z;var sx=(im2.width-Math.min(im2.width,im2.height))/2,sy=(im2.height-Math.min(im2.width,im2.height))/2,ss=Math.min(im2.width,im2.height);c.getContext('2d').drawImage(im2,sx,sy,ss,ss,0,0,z,z);db.set.avatar=c.toDataURL('image/jpeg',.8);save();render();toast('Foto profil disimpan')};im2.onerror=function(){toast('Gambar tidak bisa dibaca')};im2.src=fr.result};fr.readAsDataURL(f)});
 document.addEventListener('change',function(e){if(e.target.id!=='pdi')return;var f=e.target.files[0];if(!f||!PD)return;pdRead();var fr=new FileReader();fr.onload=function(){var im2=new Image();im2.onload=function(){var w=Math.min(240,im2.width),h=Math.round(im2.height*w/im2.width),c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im2,0,0,w,h);PD.img=c.toDataURL('image/jpeg',.8);render()};im2.src=fr.result};fr.readAsDataURL(f)});
+document.addEventListener('change',function(e){var t=e.target;
+ if(t.id==='sndsel'){db.set.sndType=t.value;save();render();if(t.value==='custom'&&!db.set.sndFile){toast('Pilih file suara dari HP dulu');return}playAlert()}
+ else if(t.id==='sndfile'&&t.files&&t.files[0]){var f=t.files[0];if(f.size>400*1024){toast('File terlalu besar (maks 400 KB).');t.value='';return}var r=new FileReader();r.onload=function(){db.set.sndFile=r.result;db.set.sndName=f.name;db.set.sndType='custom';save();render();playAlert();toast('Suara disimpan')};r.onerror=function(){toast('Gagal membaca file')};r.readAsDataURL(f)}});
 })();
 </script><script>if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(function(){})</script></body></html>
