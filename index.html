@@ -169,7 +169,7 @@ if(!db.mk1){db.mk1=1;if(!db.products.some(function(x){return x.c==='Kentang'&&x.
 var DF={addr:'Jl. Batua Raya, samping tower listrik',tel:'085656884416',kasir:'Gulava',foot:'Terimakasih atas pesanannya :)',logoOn:true};
 Object.keys(DF).forEach(function(k){if(db.set[k]===undefined)db.set[k]=DF[k]});
 var sd=null;function tm(t){return new Date(t).toTimeString().slice(0,5)}
-function save(){try{localStorage.setItem(K,JSON.stringify(db))}catch(e){toast('Penyimpanan penuh/diblokir. Cadangkan data di Laporan.')}}
+function save(){try{localStorage.setItem(K,JSON.stringify(db))}catch(e){toast('Penyimpanan penuh/diblokir. Cadangkan data di Laporan.')}try{menuSyncSoon()}catch(e){}}
 function rp(n){return(n<0?'-':'')+'Rp '+Math.abs(Math.round(n)).toLocaleString('id-ID')}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function pa(x,m){return x.pay===m?x.total:(x.pay==='Gabungan'?(m==='Tunai'?(x.pc||0):m==='QRIS'?(x.pq||0):0):0)}
@@ -398,7 +398,7 @@ function xgHTML(p){return xgOf(p).map(function(g){return '<label class="f">'+esc
 function dd(t){return t?new Date(t).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}):'-'}
 function plistHTML(){var q=PQ.toLowerCase(),L=db.products.filter(function(p){return(p.n+' '+p.c+' '+(p.sku||'')+' '+(p.bc||'')).toLowerCase().indexOf(q)>=0});
  return L.map(function(p){return '<div class="card"><div class="lead">'+im(p,'th')+'<span><b>'+esc(p.n)+'</b><br><small class="mut">Beli '+rp(p.h||0)+' · Jual '+prc(p)+'</small></span></div><div class="pg"><span>Terdaftar<b>'+dd(p.cr)+'</b></span><span>Kategori<b>'+esc(p.c)+'</b></span><span>Stok<b>'+(p.st===undefined?'-':p.st)+'</b></span><span>SKU<b>'+esc(p.sku||'-')+'</b></span><span>Manajemen Stok<b>'+(p.ms?'Ya':'Tidak')+'</b></span><span>Barcode<b>'+esc(p.bc||'-')+'</b></span><span>Produk Ekstra<b>'+((p.xg||[]).length?'Ya':'Tidak')+'</b></span></div><div class="row" style="gap:8px"><button class="btn ghost" style="flex:1" data-act="pedit" data-id="'+p.id+'">Ubah</button><button class="btn ghost" data-act="pmore" data-id="'+p.id+'" aria-label="Menu lain">⋮</button></div></div>'}).join('')||'<p class="mut">Produk tidak ditemukan.</p>'}
-function vPdaftar(){var z=db.products.filter(function(p){return!p.h}).length;return pback()+'<div class="row" style="gap:8px;margin:6px 0"><input id="pq" type="search" placeholder="Cari nama, SKU, barcode" value="'+esc(PQ)+'" style="flex:1"><button class="btn sm" data-act="pnew">+ Tambah</button></div><div class="mut" style="margin-bottom:6px">'+db.products.length+' produk</div>'+(z?'<div class="warn">'+z+' produk belum diisi harga beli (HPP). Isi dulu supaya laba dihitung benar.</div>':'')+'<div id="plist">'+plistHTML()+'</div>'}
+function vPdaftar(){var z=db.products.filter(function(p){return!p.h}).length;return pback()+menuCard()+'<div class="row" style="gap:8px;margin:6px 0"><input id="pq" type="search" placeholder="Cari nama, SKU, barcode" value="'+esc(PQ)+'" style="flex:1"><button class="btn sm" data-act="pnew">+ Tambah</button></div><div class="mut" style="margin-bottom:6px">'+db.products.length+' produk</div>'+(z?'<div class="warn">'+z+' produk belum diisi harga beli (HPP). Isi dulu supaya laba dihitung benar.</div>':'')+'<div id="plist">'+plistHTML()+'</div>'}
 function peOpen(id){var p=id?P(id):null;PD=p?JSON.parse(JSON.stringify(p)):{id:'',c:'',n:'',p:'',h:''};PD.lots=PD.lots||[];PD.xg=PD.xg||[];PD.xon=PD.xg.length>0;PD.ms=!!PD.ms;PD.stv=PD.st===undefined?'':String(PD.st);PADV=false;TT.pedit=id?'Ubah Produk':'Tambah Produk';tab='pedit';closeS();render();window.scrollTo(0,0)}
 function pdRead(){if(!PD||!$('#pdn'))return;PD.n=$('#pdn').value;PD.c=$('#pdc').value;if(!$('#pdh').disabled)PD.h=$('#pdh').value;PD.p=$('#pdp').value;PD.sku=$('#pdk').value;if($('#pdst'))PD.stv=$('#pdst').value;if($('#pdd'))PD.ds=$('#pdd').value;if($('#pdb'))PD.bc=$('#pdb').value}
 function vPedit(){var p=PD;if(!p)return pback();var hs=p.ms&&p.lots.length,dh=hs?p.lots.slice().sort(function(a,b){return a.d<b.d?-1:1})[0].h:p.h;
@@ -410,10 +410,10 @@ function vPedit(){var p=PD;if(!p)return pback();var hs=p.ms&&p.lots.length,dh=hs
  (p.ms?'<p class="mut" style="margin:6px 0">Harga beli mengikuti stok pertama yang tersedia (FIFO). Stok keluar mulai dari yang paling lama masuk.</p><button class="btn ghost full" data-act="plotadd">Tambah Stok</button>'+(lots||'<p class="mut">Belum ada stok. Ketuk Tambah Stok.</p>'):'<label class="f">Stok (kosongkan = tidak dicatat)</label><input id="pdst" type="number" inputmode="numeric" value="'+esc(p.stv)+'">')+
  '<div class="row" style="margin-top:16px"><b>Produk Ekstra</b><button class="chip'+(p.xon?' on':'')+'" data-act="pexs">'+(p.xon?'Ya':'Tidak')+'</button></div>'+(p.xon?(gs.length?'<div style="margin:8px 0">'+gs.map(function(g){return '<span class="tg2">'+esc(g.n)+'</span>'}).join('')+'</div>':'')+'<button class="btn ghost full" data-act="pxpick">Tambah Produk Ekstra</button>':'')+'</div>'+
  '<div class="card"><div class="row" data-act="padv" style="cursor:pointer"><b>Opsi Lanjutan</b><span>'+(PADV?'▲':'▼')+'</span></div>'+(PADV?'<div class="row" style="gap:12px;margin-top:10px;justify-content:flex-start">'+(p.img?'<img class="th" style="width:72px;height:72px" src="'+p.img+'" alt="">':'<div class="th ph" style="width:72px;height:72px">🖼️</div>')+'<span><input id="pdi" type="file" accept="image/*">'+(p.img?'<br><button class="btn ghost sm" data-act="pdiclr" style="margin-top:6px">Hapus foto</button>':'')+'</span></div><label class="f">Deskripsi</label><textarea id="pdd" rows="3" placeholder="Deskripsikan produk" style="width:100%;padding:10px;border-radius:12px;border:2px solid var(--ink);background:var(--card2);color:var(--text);font:inherit">'+esc(p.ds||'')+'</textarea><label class="f">Barcode</label><div class="row" style="gap:8px"><input id="pdb" value="'+esc(p.bc||'')+'" placeholder="Contoh: GLV1234567" style="flex:1"><button class="btn sm" data-act="pbc">Generate</button></div>':'')+'</div>'+
- '<p id="err" class="neg"></p><button class="btn full" data-act="pesave">Simpan</button>'+(p.id?'<button class="btn ghost full" style="margin-top:10px;color:var(--bad);border-color:var(--bad)" data-act="pdelx" data-id="'+p.id+'">Hapus produk</button>':'')}
+ '<div class="card"><div class="row"><b>🌐 Tampil di Menu Web</b><button class="chip'+(p.web===false?'':' on')+'" data-act="peweb">'+(p.web===false?'Tidak':'Ya')+'</button></div><small class="mut">Foto dan deskripsi diatur di Opsi Lanjutan.</small></div><p id="err" class="neg"></p><button class="btn full" data-act="pesave">Simpan</button>'+(p.id?'<button class="btn ghost full" style="margin-top:10px;color:var(--bad);border-color:var(--bad)" data-act="pdelx" data-id="'+p.id+'">Hapus produk</button>':'')}
 function peSave(){pdRead();var p=PD,n=(p.n||'').trim(),pr=+p.p;if(!n||!(pr>0)){$('#err').textContent='Isi nama dan harga jual.';return}
  var o,old;if(p.id){o=P(p.id);old=o.st}else{o={id:'p'+uid(),cr:Date.now()};db.products.push(o)}
- o.n=n;o.c=(p.c||'').trim()||'Lainnya';o.p=pr;o.h=+p.h||0;o.sku=(p.sku||'').trim();o.bc=(p.bc||'').trim();o.ds=(p.ds||'').trim();if(p.img)o.img=p.img;else delete o.img;
+ o.n=n;o.c=(p.c||'').trim()||'Lainnya';o.p=pr;o.h=+p.h||0;o.sku=(p.sku||'').trim();o.bc=(p.bc||'').trim();o.ds=(p.ds||'').trim();if(p.img)o.img=p.img;else delete o.img;if(p.web===false)o.web=false;else delete o.web;
  o.xg=p.xon?p.xg.slice():[];o.ms=!!p.ms;
  if(o.ms){o.lots=p.lots;syncLot(o)}else{delete o.lots;if(p.stv===''||p.stv===undefined)delete o.st;else o.st=Math.max(0,+p.stv)}
  if(o.st!==undefined&&o.st!==old)slog(o,o.st-(old||0),p.id?'Ubah produk':'Produk baru');
@@ -553,6 +553,19 @@ function playAlert(){var ty=db.set.sndType||'beep';if(ty==='off')return;
  }catch(e){}}
 function sndRow(){var cur=db.set.sndType||'beep',op=SND.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===cur?' selected':'')+'>'+x[1]+'</option>'}).join('');
  return '<div class="row" style="margin-top:8px"><span>Suara pesanan masuk</span><button class="btn sm" data-act="sndtest">Tes</button></div><select id="sndsel" style="margin-top:8px">'+op+'</select>'+(cur==='custom'?'<div class="row" style="margin-top:8px"><small class="mut">'+(db.set.sndFile?esc(db.set.sndName||'Suara dari HP'):'Belum ada file')+' (maks 400 KB)</small><button class="btn sm" data-act="sndpick">Pilih file</button></div>':'')+'<input id="sndfile" type="file" accept="audio/*" style="display:none"><small class="mut" style="display:block;margin-top:8px">Nada di bilah notifikasi saat kasir tertutup diatur di Pengaturan HP › Aplikasi › Kasir Gulava › Notifikasi › Suara.</small>'}
+var MT=null,MCP=['kebab','burger','hotdog','corndog','minuman'];
+function menuList(){var L=db.products.filter(function(x){return x&&x.web!==false&&x.n&&x.c&&+x.p>0}).map(function(x){var o={c:String(x.c),n:String(x.n),p:Math.round(+x.p)};if(x.ds)o.d=String(x.ds);if(typeof x.img==='string'&&x.img.indexOf('data:image/')===0)o.i=x.img;return o});
+ var cs=[];L.forEach(function(o){if(cs.indexOf(o.c)<0)cs.push(o.c)});
+ function rk(c){var i=MCP.indexOf(c.toLowerCase());return i<0?100+cs.indexOf(c):i}
+ cs.sort(function(a,b){return rk(a)-rk(b)});var out=[];cs.forEach(function(c){L.forEach(function(o){if(o.c===c)out.push(o)})});return out}
+function menuHash(t){var h=5381,i;for(i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return h+':'+t.length}
+function menuSync(manual){if(!fbOn()){if(manual)toast('Hubungkan Firebase dulu di Pengaturan › Warung Online');return}
+ var L=menuList();if(!L.length){if(manual)toast('Belum ada produk yang bisa ditampilkan di menu web');return}
+ var sig=menuHash(JSON.stringify(L));if(!manual&&sig===db.set.menuSig)return;
+ fbReq('/menu','PUT',{t:Date.now(),items:L}).then(function(){db.set.menuSig=sig;db.set.menuOn=true;try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}if(manual){toast('Menu web diperbarui ('+L.length+' produk)');if(tab==='pdaftar')render()}}).catch(function(e){if(manual)toast('Gagal kirim: '+e.message+(/40[13]/.test(e.message)?' (cek Rules Firebase)':''))})}
+function menuSyncSoon(){if(!db.set||!db.set.menuOn)return;clearTimeout(MT);MT=setTimeout(function(){menuSync(false)},2500)}
+function menuCard(){var on=!!db.set.menuOn,n=db.products.filter(function(x){return x.web!==false&&x.n&&+x.p>0}).length;
+ return '<div class="card" style="margin:6px 0"><div class="row"><b>🌐 Menu Web</b>'+(on?'<b class="pos">Tersambung ✓</b>':'<b class="neg">Belum disinkronkan</b>')+'</div><small class="mut" style="display:block;margin-top:4px">'+(fbOn()?'Produk yang ditambah, diubah, atau dihapus di sini otomatis ikut berubah di situs menu pelanggan'+(on?'.':' setelah kamu sinkronkan sekali.')+' Produk yang tidak ingin ditampilkan: buka produknya dan matikan "Tampil di Menu Web". Saat ini '+n+' produk tampil.':'Atur dulu koneksi di Pengaturan › Warung Online.')+'</small><button class="btn full" style="margin-top:8px" data-act="menusync">Sinkronkan ke Menu Web</button></div>'}
 function showNotif(title,body){
  if(!notifOK())return;
  var opt={body:body,tag:'pesanan-online',renotify:true,vibrate:[300,120,300,120,300]};
@@ -675,6 +688,8 @@ document.addEventListener('click',function(e){
   else if(a==='padv'){pdRead();PADV=!PADV;render()}
   else if(a==='pbc'){pdRead();PD.bc='GLV'+Math.floor(1e6+Math.random()*9e6);render()}
   else if(a==='pdiclr'){pdRead();delete PD.img;render()}
+  else if(a==='peweb'){pdRead();PD.web=(PD.web===false);render()}
+  else if(a==='menusync'){if(!fbOn())menuSync(true);else if(db.set.menuOn)menuSync(true);else ask('menusync','Kirim '+menuList().length+' produk ke menu pelanggan?',function(){menuSync(true)})}
   else if(a==='pesave')peSave();
   else if(a==='xgnew')xgOpen('','pekstra');
   else if(a==='xged')xgOpen(id,'pekstra');
