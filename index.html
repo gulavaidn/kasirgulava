@@ -138,6 +138,73 @@ label.f{display:block;margin:12px 0 4px;font-weight:700;font-size:13px}
 #ord .oc.ed{outline:2px solid var(--ink)}
 #ord .oit{font-size:13px;line-height:1.45;margin:4px 0}
 #ord .oit i{font-style:normal;background:var(--bg);color:var(--ink);border-radius:8px;padding:0 6px;font-weight:700}
+
+/* ===== TAMPILAN LAPTOP / DESKTOP (>= 900px) ===== */
+@media screen and (min-width:900px){
+ body{font-size:16px;padding-left:104px}
+ header.top{padding:18px 36px 10px}
+ header.top h1{font-size:42px}
+ header.top small{font-size:17px}
+ .hb{font-size:34px}
+ main{max-width:1240px;padding:8px 36px 130px}
+ /* menu bawah -> sidebar kiri */
+ nav.tabs{top:0;right:auto;bottom:0;width:104px;grid-template-columns:1fr;grid-template-rows:repeat(5,92px);align-content:center;border-top:0;border-right:1px solid rgba(128,128,128,.28);padding-bottom:0}
+ nav.tabs button{height:92px;font-size:13px;gap:4px;transition:background .15s,opacity .15s}
+ nav.tabs button span{font-size:28px;line-height:32px}
+ nav.tabs button:hover{opacity:1;background:rgba(128,128,128,.1)}
+ /* bar keranjang */
+ .cartbar{left:104px;bottom:0;padding:14px 36px}
+ .cartbar>div{max-width:1240px;gap:16px}
+ .toast{left:104px;right:0;bottom:100px;max-width:480px;font-size:15px}
+ /* produk */
+ .grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;margin-top:10px}
+ .cd{padding:14px 14px 16px;border-radius:26px;transition:transform .15s,box-shadow .15s}
+ .cd:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.14)}
+ .cd .pi{height:140px;margin-bottom:6px}
+ .cd .ph{height:140px;font-size:64px}
+ .cd h3{font-size:23px;margin:6px 0 4px}
+ .cd .ds{font-size:13.5px;margin-bottom:8px}
+ .cd .pr{font-size:19px}
+ .cd .ab,.cd .tb{height:46px}
+ .cd .tb{font-size:15px}
+ .cd .tb:hover{filter:brightness(1.1)}
+ .cd .sp button{width:40px;height:40px}
+ .cd .sp b{font-size:19px}
+ /* pencarian & kategori */
+ input,select,textarea{font-size:16px;padding:13px 16px}
+ .chips{flex-wrap:wrap;overflow:visible;gap:10px;padding:12px 0}
+ .chip{padding:10px 20px;font-size:15px;cursor:pointer}
+ .chip:hover:not(.on){border-color:var(--ink)}
+ .btn{font-size:16px;padding:14px 24px}
+ .btn:hover:not(:disabled){filter:brightness(1.08)}
+ .btn.sm{font-size:14px;padding:10px 18px}
+ /* kartu, dasbor, laporan */
+ .card{padding:20px;border-radius:22px}
+ .sal{padding:24px;border-radius:26px}
+ .sal .sv{font-size:44px}
+ .sal .qa button{padding:14px 6px;font-size:14px}
+ .big{font-size:42px}
+ .tg{grid-template-columns:repeat(4,1fr);gap:14px}
+ .tg button{min-height:104px;font-size:14px;border-radius:22px}
+ .tg button span{font-size:32px}
+ .tg button:hover{filter:brightness(.97)}
+ .hub .hr{font-size:18px;padding:20px 0}
+ .mut{font-size:14px}
+ .tot{font-size:19px}
+ /* jendela popup -> di tengah layar */
+ .ov{align-items:center}
+ .sheet{max-width:680px;max-height:90%;border-radius:28px;padding:26px}
+ @keyframes up{from{transform:translateY(24px);opacity:0}}
+ .dp{max-width:360px}
+ .sr:hover,.dp .mi:hover{background:rgba(128,128,128,.1)}
+ #lgn>div,#lock>div{transform:scale(1.15)}
+}
+/* layar sangat lebar (monitor besar) */
+@media screen and (min-width:1500px){
+ main{max-width:1440px}
+ .cartbar>div{max-width:1440px}
+ .grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+}
 </style></head>
 <body>
 <header class="top"><div style="display:flex;align-items:center;gap:10px"><button class="hb" data-act="menu" aria-label="Menu">☰</button><h1 id="ttl">Kasir</h1></div><small id="biz"></small></header>
