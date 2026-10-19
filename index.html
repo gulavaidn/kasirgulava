@@ -919,7 +919,56 @@ document.addEventListener('change',function(e){var i=e.target.id;if(i!=='pdf'&&i
 document.addEventListener('change',function(e){if(e.target.id!=='rsf')return;var f=e.target.files[0];if(!f)return;var fr=new FileReader(),inf=$('#rsi'),er=$('#err'),b=$('#rsb');if(er)er.textContent='';fr.onload=function(){try{var d=JSON.parse(String(fr.result||'').replace(/^\uFEFF/,''));if(!d.products||!d.sales||!d.exp)throw 0;RSD=d;if(inf)inf.innerHTML='<b>'+esc(f.name)+'</b><br>'+d.products.length+' produk · '+d.sales.length+' transaksi · '+d.exp.length+' biaya';if(b){b.disabled=false;b.style.opacity=1}}catch(x){RSD=null;if(inf)inf.textContent='';if(b){b.disabled=true;b.style.opacity=.5}if(er)er.textContent='File tidak valid atau bukan cadangan aplikasi ini.'}};fr.onerror=function(){if(er)er.textContent='File tidak bisa dibaca.'};fr.readAsText(f)});
 document.addEventListener('input',function(e){if(e.target.id==='pq'){PQ=e.target.value;var pl=$('#plist');if(pl)pl.innerHTML=plistHTML()}});
 document.addEventListener('change',function(e){if(e.target.id!=='pfp')return;var f=e.target.files[0];if(!f)return;readSet();var fr=new FileReader();fr.onload=function(){var im2=new Image();im2.onload=function(){var z=Math.min(160,im2.width,im2.height),c=document.createElement('canvas');c.width=c.height=z;var sx=(im2.width-Math.min(im2.width,im2.height))/2,sy=(im2.height-Math.min(im2.width,im2.height))/2,ss=Math.min(im2.width,im2.height);c.getContext('2d').drawImage(im2,sx,sy,ss,ss,0,0,z,z);db.set.avatar=c.toDataURL('image/jpeg',.8);save();render();toast('Foto profil disimpan')};im2.onerror=function(){toast('Gambar tidak bisa dibaca')};im2.src=fr.result};fr.readAsDataURL(f)});
-document.addEventListener('change',function(e){if(e.target.id!=='pdi')return;var f=e.target.files[0];if(!f||!PD)return;pdRead();var fr=new FileReader();fr.onload=function(){var im2=new Image();im2.onload=function(){var w=Math.min(240,im2.width),h=Math.round(im2.height*w/im2.width),c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im2,0,0,w,h);PD.img=c.toDataURL('image/jpeg',.8);render()};im2.src=fr.result};fr.readAsDataURL(f)});
+function bgAlpha(d,w,h,tol){
+ var n=w*h,S=[],step=Math.max(1,Math.floor((w+h)/100));
+ function pick(x,y){var i=(y*w+x)*4;S.push([d[i],d[i+1],d[i+2]])}
+ var x,y;for(x=0;x<w;x+=step){pick(x,0);pick(x,h-1)}for(y=0;y<h;y+=step){pick(0,y);pick(w-1,y)}
+ function d2(a,b){var r=a[0]-b[0],g=a[1]-b[1],bb=a[2]-b[2];return r*r+g*g+bb*bb}
+ var K=Math.min(4,S.length),C=[],k,it;for(k=0;k<K;k++)C.push(S[Math.floor(k*S.length/K)].slice());
+ var cnt=[];
+ for(it=0;it<8;it++){var sm=C.map(function(){return[0,0,0,0]});S.forEach(function(p){var bi=0,bd=1e12;C.forEach(function(c,ci){var dd=d2(p,c);if(dd<bd){bd=dd;bi=ci}});var a=sm[bi];a[0]+=p[0];a[1]+=p[1];a[2]+=p[2];a[3]++});cnt=sm.map(function(a){return a[3]});sm.forEach(function(a,ci){if(a[3])C[ci]=[a[0]/a[3],a[1]/a[3],a[2]/a[3]]})}
+ var BGC=C.filter(function(c,ci){return cnt[ci]>=Math.max(3,S.length*.08)});if(!BGC.length)BGC=[C[0]];
+ var t2=tol*tol,bg=new Uint8Array(n),st=new Int32Array(n),sp=0;
+ function isBg(i){var p=[d[i*4],d[i*4+1],d[i*4+2]];for(var j=0;j<BGC.length;j++)if(d2(p,BGC[j])<t2)return true;return false}
+ function push(i){if(!bg[i]&&isBg(i)){bg[i]=1;st[sp++]=i}}
+ for(x=0;x<w;x++){push(x);push((h-1)*w+x)}for(y=0;y<h;y++){push(y*w);push(y*w+w-1)}
+ while(sp){var i=st[--sp],cx=i%w,cy=(i-cx)/w;if(cx>0)push(i-1);if(cx<w-1)push(i+1);if(cy>0)push(i-w);if(cy<h-1)push(i+w)}
+ // largest fg component
+ var lab=new Int32Array(n),best=0,bl=0,L=0;
+ for(var s=0;s<n;s++){if(bg[s]||lab[s])continue;L++;var sz=0;sp=0;st[sp++]=s;lab[s]=L;while(sp){var q=st[--sp];sz++;var qx=q%w,qy=(q-qx)/w;
+  if(qx>0&&!bg[q-1]&&!lab[q-1]){lab[q-1]=L;st[sp++]=q-1}if(qx<w-1&&!bg[q+1]&&!lab[q+1]){lab[q+1]=L;st[sp++]=q+1}
+  if(qy>0&&!bg[q-w]&&!lab[q-w]){lab[q-w]=L;st[sp++]=q-w}if(qy<h-1&&!bg[q+w]&&!lab[q+w]){lab[q+w]=L;st[sp++]=q+w}}
+  if(sz>best){best=sz;bl=L}}
+ var m=new Uint8Array(n);for(var i2=0;i2<n;i2++)m[i2]=lab[i2]===bl?1:0;
+ // erode 1px
+ var e=new Uint8Array(n);for(y=0;y<h;y++)for(x=0;x<w;x++){var o=y*w+x;if(m[o]&&(x>0&&m[o-1])&&(x<w-1&&m[o+1])&&(y>0&&m[o-w])&&(y<h-1&&m[o+w]))e[o]=1}
+ // 3x3 blur -> soft alpha
+ var a=new Uint8ClampedArray(n);for(y=0;y<h;y++)for(x=0;x<w;x++){var sum=0,c=0;for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){var xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;sum+=e[yy*w+xx];c++}a[y*w+x]=Math.round(255*sum/c)}
+ return a}
+
+
+/* ---- Hapus background foto produk ---- */
+var BG=null;
+function bgCanvasFrom(im2,maxS){var sc=Math.min(1,maxS/Math.max(im2.width,im2.height)),w=Math.max(1,Math.round(im2.width*sc)),h=Math.max(1,Math.round(im2.height*sc)),c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im2,0,0,w,h);return c}
+function bgCut(src,tol){var w=src.width,h=src.height,id=src.getContext('2d').getImageData(0,0,w,h),a=bgAlpha(id.data,w,h,tol),o=document.createElement('canvas');o.width=w;o.height=h;var ox=o.getContext('2d'),od=ox.createImageData(w,h),i,x0=w,y0=h,x1=-1,y1=-1;
+ for(i=0;i<w*h;i++){od.data[i*4]=id.data[i*4];od.data[i*4+1]=id.data[i*4+1];od.data[i*4+2]=id.data[i*4+2];od.data[i*4+3]=a[i];if(a[i]>20){var x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}
+ ox.putImageData(od,0,0);if(x1<0)return o;x0=Math.max(0,x0-2);y0=Math.max(0,y0-2);x1=Math.min(w-1,x1+2);y1=Math.min(h-1,y1+2);
+ var r=document.createElement('canvas');r.width=x1-x0+1;r.height=y1-y0+1;r.getContext('2d').drawImage(o,x0,y0,r.width,r.height,0,0,r.width,r.height);return r}
+function bgSheet(){return '<div class="row"><h2 style="font-size:28px">Foto Produk</h2><button class="x" style="color:var(--ink)" data-act="close">✕</button></div>'+
+ '<div style="background:conic-gradient(#d9d9d9 25%,#fff 0 50%,#d9d9d9 0 75%,#fff 0) 0 0/16px 16px;border-radius:14px;padding:8px;text-align:center;margin-top:8px"><canvas id="bgp" style="max-width:100%;max-height:260px"></canvas></div>'+
+ '<div class="row" style="margin-top:12px"><b>Hapus Background</b><button class="chip on" id="bgt" data-act="bgtog">Ya</button></div>'+
+ '<div id="bgtw"><label class="f">Toleransi: <span id="bgtv">'+BG.tol+'</span></label><input id="bgtol" type="range" min="10" max="120" value="'+BG.tol+'" style="width:100%"><small class="mut">Naikkan jika sisa background masih ada. Turunkan jika bagian produk ikut terhapus.</small></div>'+
+ '<button class="btn full" style="margin-top:14px" data-act="bgok">Pakai Foto</button>'}
+function bgRender(){if(!BG)return;var c;if(BG.on){BG.res=bgCut(BG.cv,BG.tol);c=BG.res}else c=BG.cv;var p=$('#bgp');if(!p)return;p.width=c.width;p.height=c.height;var x=p.getContext('2d');x.clearRect(0,0,p.width,p.height);x.drawImage(c,0,0)}
+function bgFinal(){var src=BG.on?BG.res:BG.cv,mx=BG.on?320:240,sc=Math.min(1,mx/Math.max(src.width,src.height)),w=Math.max(1,Math.round(src.width*sc)),h=Math.max(1,Math.round(src.height*sc)),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');
+ if(!BG.on){x.fillStyle='#fff';x.fillRect(0,0,w,h)}x.drawImage(src,0,0,w,h);
+ if(!BG.on)return c.toDataURL('image/jpeg',.8);var u=c.toDataURL('image/webp',.88);return u.indexOf('data:image/webp')===0?u:c.toDataURL('image/png')}
+document.addEventListener('input',function(e){if(e.target.id!=='bgtol'||!BG)return;BG.tol=+e.target.value;var v=$('#bgtv');if(v)v.textContent=BG.tol;clearTimeout(BG.t);BG.t=setTimeout(bgRender,60)});
+document.addEventListener('click',function(e){var b=e.target.closest('[data-act]');if(!b||!BG)return;var a=b.dataset.act;
+ if(a==='bgtog'){BG.on=!BG.on;b.textContent=BG.on?'Ya':'Tidak';b.classList.toggle('on',BG.on);var w=$('#bgtw');if(w)w.hidden=!BG.on;bgRender()}
+ else if(a==='bgok'&&PD){PD.img=bgFinal();BG=null;closeS();render();toast('Foto produk dipasang')}});
+document.addEventListener('change',function(e){if(e.target.id!=='pdi')return;var f=e.target.files[0];if(!f||!PD)return;pdRead();var fr=new FileReader();fr.onload=function(){var im2=new Image();im2.onload=function(){BG={cv:bgCanvasFrom(im2,480),tol:38,on:true,res:null};openS(bgSheet());bgRender()};im2.src=fr.result};fr.readAsDataURL(f)});
+
 document.addEventListener('change',function(e){var t=e.target;
  if(t.id==='sndsel'){db.set.sndType=t.value;save();render();if(t.value==='custom'&&!db.set.sndFile){toast('Pilih file suara dari HP dulu');return}playAlert()}
  else if(t.id==='sndfile'&&t.files&&t.files[0]){var f=t.files[0];if(f.size>400*1024){toast('File terlalu besar (maks 400 KB).');t.value='';return}var r=new FileReader();r.onload=function(){db.set.sndFile=r.result;db.set.sndName=f.name;db.set.sndType='custom';save();render();playAlert();toast('Suara disimpan')};r.onerror=function(){toast('Gagal membaca file')};r.readAsDataURL(f)}});
